@@ -198,34 +198,6 @@ def clean_up_emg_signal(time, emg_data, filter_configs, show=False):
     return emg_filtered, emg_envelope
 
 
-def detect_segments_solnik(signal=None, rest=None, sampling_rate=1000,
-                           threshold=10):
-    """Determine onsets of EMG pulses.
-       Follows the approach by Solnik et al. [Sol10]_.
-       Parameters
-       ----------
-       signal : array
-           Input filtered EMG signal.
-       rest : array, list, dict
-           One of the following 3 options:
-           * N-dimensional array with filtered samples corresponding to a
-           rest period;
-           * 2D array or list with the beginning and end indices of a segment of
-           the signal corresponding to a rest period;
-           * Dictionary with {'mean': mean value, 'std_dev': standard variation}.
-       sampling_rate : int, float, optional
-           Sampling frequency (Hz).
-       threshold : int, float
-           Scale factor for calculating the detection threshold.
-           """
-    pulses, emg_processed = emg.solnik_onset_detector(signal=signal, rest=rest,
-                                                      sampling_rate=sampling_rate,
-                                                      threshold=threshold,
-                                                      active_state_duration=1000)
-    time_begin, time_end = get_starts_ends(pulses)
-    return time_begin, time_end
-
-
 def get_pluses(signal):
     threshold = 1.2 * np.mean(signal) + 0.8 * np.std(signal, ddof=1)
 
