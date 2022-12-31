@@ -460,7 +460,7 @@ def apply_fast_fourier_transform(emg_data, sampling_frequency=1000, figure_name=
 def add_onsets_class(onsets, activity_starts, activity_ends):
     for i in range(len(activity_starts)):
         for j in range(activity_starts[i], activity_ends[i], 1):
-            onsets[j] = 1
+            onsets[j] = i + 1
 
     return onsets
 
