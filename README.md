@@ -1,6 +1,6 @@
-# Muscle Fatigue Detection
+# Muscle Tiredness Estimation
 
-This projects contains the necessary tools to detect muscle fatigue from sEMG signals.
+This projects contains the necessary tools to detect muscle tiredness from sEMG signals.
 
 ## Description
 In ``` experiment.ipynb``` you will see examples of analysing signals from dataset located under 'subject_data'.

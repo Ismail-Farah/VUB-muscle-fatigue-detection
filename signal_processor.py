@@ -341,8 +341,8 @@ def show_experiment_info(data, segments_number, time):
               str(time.max() / 1000) + " seconds")
 
 
-def calculate_muscle_activities(activity_starts, activity_ends, emg_data, checked_flexs=None, show=False,
-                                sub_segment_size=None):
+def calculate_muscle_activities(activity_starts, activity_ends, emg_data,
+                                time, checked_flexs=None, show=False):
     power_means = []
     start_power_means = []
     mid_power_means = []
@@ -461,7 +461,7 @@ def add_onsets_class(onsets, activity_starts, activity_ends):
     # for each onset, add the onset order as a class or label
     for i in range(len(activity_starts)):
         for j in range(activity_starts[i], activity_ends[i], 1):
-            onsets[j] = (i + 1)
+            onsets[j] = i + 1
 
     return onsets
 
