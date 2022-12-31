@@ -7,7 +7,6 @@ from biosignalsnotebooks import detect as bsnb
 import plotting as p
 import filtering_config as fc
 
-
 # Constants
 ENGINE = 'python'
 TXT_SUFFIX = '.txt'
@@ -321,7 +320,6 @@ def split_data(emg_signal, time, segments_number, segment_checked_number, filter
     return emg_signal, time
 
 
-
 def create_fatigue_figure_path(file_name):
     return "./figures/" + file_name[1] + "_fatigue"
 
@@ -343,8 +341,8 @@ def show_experiment_info(data, segments_number, time):
               str(time.max() / 1000) + " seconds")
 
 
-def calculate_muscle_activities(activity_starts, activity_ends, emg_data,
-                                time, checked_flexs=None, show=False):
+def calculate_muscle_activities(activity_starts, activity_ends, emg_data, checked_flexs=None, show=False,
+                                sub_segment_size=None):
     power_means = []
     start_power_means = []
     mid_power_means = []
@@ -352,55 +350,57 @@ def calculate_muscle_activities(activity_starts, activity_ends, emg_data,
     power_mean_time = []
     for i in range(len(activity_starts)):
         # Get the start, mid and end of a flex
-        array, array_start, array_mid, array_end = get_flex_parts(activity_starts, activity_ends, i, emg_data)
+        array, array_start, array_mid, array_end = get_flex_parts(activity_starts, activity_ends, i, emg_data,
+                                                                  sub_segment_size)
         # Skip small pulses which are less than 450 ms
-        if len(array) >= 450 :   
+        if len(array) >= 450:
             power_start, frequencies_start = get_power(array_start.tolist(), 1000)
             power_mid, frequencies_mid = get_power(array_mid.tolist(), 1000)
             power_end, frequencies_end = get_power(array_end.tolist(), 1000)
-            
+
             b2, a2 = sp.signal.butter(4, 0.08, btype="lowpass")
             filtered_power_start = sp.signal.filtfilt(b2, a2, power_start)
             filtered_power_mid = sp.signal.filtfilt(b2, a2, power_mid)
             filtered_power_end = sp.signal.filtfilt(b2, a2, power_end)
-            
+
             power_start_avg = np.median(filtered_power_start)
             power_mid_avg = np.median(filtered_power_mid)
             power_end_svg = np.median(filtered_power_end)
             power_medians_list = [power_start_avg, power_mid_avg, power_end_svg]
-            
+
             # Save the current power mean with its respective time
             power_means.append(np.median(power_medians_list))
             start_power_means.append(power_start_avg)
             mid_power_means.append(power_mid_avg)
             end_power_means.append(power_end_svg)
             power_mean_time.append(activity_ends[i])
-            
-            if (i+1) in checked_flexs:
-                p.plot_activation_detials(activation_number=i+1,
-                                      array=array,
-                                      array_start=array_start,
-                                      array_mid=array_mid,
-                                      array_end=array_end,
-                                      power_start=power_start, frequencies_start=frequencies_start,
-                                      filtered_power_start=filtered_power_start,
-                                      power_mid=power_mid, frequencies_mid=frequencies_mid,
-                                      filtered_power_mid=filtered_power_mid,
-                                      power_end=power_end, frequencies_end=frequencies_end,
-                                      filtered_power_end=filtered_power_end,
-                                      power_medians_list=power_medians_list,
-                                      show=show)
+
+            if (i + 1) in checked_flexs:
+                p.plot_activation_detials(activation_number=i + 1,
+                                          array=array,
+                                          array_start=array_start,
+                                          array_mid=array_mid,
+                                          array_end=array_end,
+                                          power_start=power_start, frequencies_start=frequencies_start,
+                                          filtered_power_start=filtered_power_start,
+                                          power_mid=power_mid, frequencies_mid=frequencies_mid,
+                                          filtered_power_mid=filtered_power_mid,
+                                          power_end=power_end, frequencies_end=frequencies_end,
+                                          filtered_power_end=filtered_power_end,
+                                          power_medians_list=power_medians_list,
+                                          show=show)
 
     return power_mean_time, power_means, start_power_means, mid_power_means, end_power_means
 
 
-def get_flex_parts(activity_starts, activity_ends, checked_flex_number, emg_filtered):
+def get_flex_parts(activity_starts, activity_ends, checked_flex_number, emg_filtered, sub_segment_size=150):
     """
     Get tge parts of a specific flex from the flexes marked by 'activity_starts' & 'activity_ends'
     :param activity_starts: list of points where the flexes start
     :param activity_ends:  List of points where the flexes stop
     :param checked_flex_number: the current checked flex
     :param emg_filtered: emg filtered data
+    :param sub_segment_size: the size of the activation part (start, mid & end)
     :return:
         array: the full flex,
         array_start: the first part of the flex,
@@ -417,11 +417,11 @@ def get_flex_parts(activity_starts, activity_ends, checked_flex_number, emg_filt
     # 30% of the length    
     # post_range_shift = int(len(array)*(30/100))
     post_range_shift = 300
-    
+
     # 15% of the length
     # checked_range = int(len(array)*(15/100))
-    checked_range = 150
-    
+    checked_range = sub_segment_size
+
     array = array[pre_range_shift:-post_range_shift]
     array_start = array[:checked_range]
     array_mid = array[int(len(array) / 2) - int(checked_range / 2):
@@ -456,11 +456,12 @@ def apply_fast_fourier_transform(emg_data, sampling_frequency=1000, figure_name=
     plt.plot("Power (a. u.)")
     plt.xlabel("Frequency (Hz)")
 
-    
+
 def add_onsets_class(onsets, activity_starts, activity_ends):
+    # for each onset, add the onset order as a class or label
     for i in range(len(activity_starts)):
         for j in range(activity_starts[i], activity_ends[i], 1):
-            onsets[j] = 1
+            onsets[j] = i
 
     return onsets
 
@@ -469,8 +470,8 @@ def add_segments_to_data_file(data, subject, channel, activity_starts, activity_
     onsets = [0 for _ in range(len(data))]
     data["class"] = add_onsets_class(onsets, activity_starts, activity_ends)
     data.to_csv(subject + "_data/dataset/channel_" + str(channel), sep='\t')
-    
-    
+
+
 # This function loads the data, filter it and segment the contraction signals, and then calcuate the median muscle fatigue for each contraction of the loaded data using fast fourier transform.
 def process_emg(data_file_name, filtering_config=None, segments_number=1, segment_checked_number=1,
                 checked_flexes=None,
@@ -510,18 +511,18 @@ def process_emg(data_file_name, filtering_config=None, segments_number=1, segmen
                                   power_mean_time=power_time, power_means=power_means,
                                   path=create_fatigue_figure_path(file_name),
                                   show=show_fatigue, regression_line=show_fatigue)
-    
+
     p.plot_emg_power_means_detials(time=time, emg_data=emg_filtered,
-                                 power_mean_time=power_time, 
-                                 start_power_means=start_power_means,
-                                 mid_power_means=mid_power_means,
-                                 end_power_means=end_power_means,
-                                 regression_line=show_fatigue)
-    
-    
+                                   power_mean_time=power_time,
+                                   start_power_means=start_power_means,
+                                   mid_power_means=mid_power_means,
+                                   end_power_means=end_power_means,
+                                   regression_line=show_fatigue)
+
+
 def process_csv(data, subject, channel, filtering_config=None, segments_number=1, segment_checked_number=1,
                 checked_flexes=None,
-                show_intermediate=False, show_fatigue=True):
+                show_intermediate=False, show_fatigue=True, sub_segment_size=None):
     # Filtering and cleaning up emg data
 
     emg = 'emg' + str(channel)
@@ -538,15 +539,13 @@ def process_csv(data, subject, channel, filtering_config=None, segments_number=1
 
     activity_starts, activity_ends, smooth_signal, moving_average_time, moving_average_emg = get_signal_segments(
         emg_signal, time, filtering_config, show=False)
-    
+
     add_segments_to_data_file(data, subject, channel, activity_starts, activity_ends)
 
     segments = get_segments(activity_starts, activity_ends)
 
     p.plot_emg_segments(time=time,
                         emg_raw=emg_signal,
-#                       TODO: use the filtered signal when ploting the segments. Note that the segmentation is done using bsnt
-#                       emg_filtered=emg_filtered,
                         emg_filtered=emg_signal,
                         pulses=segments,
                         path="./figures/" + emg + "_segments",
@@ -554,17 +553,17 @@ def process_csv(data, subject, channel, filtering_config=None, segments_number=1
 
     show_experiment_info(data, segments_number, time)
 
-    power_time, power_means, start_power_means, mid_power_means, end_power_means = calculate_muscle_activities(activity_starts,  activity_ends, emg_filtered, time, checked_flexes, show_fatigue)
+    power_time, power_means, start_power_means, mid_power_means, end_power_means = calculate_muscle_activities(
+        activity_starts, activity_ends, emg_filtered, time, checked_flexes, show_fatigue, sub_segment_size)
 
     p.plot_emg_power_means_figure(time=time, emg_data=emg_filtered,
                                   power_mean_time=power_time, power_means=power_means,
                                   path=create_fatigue_figure_path(emg),
                                   show=show_fatigue, regression_line=show_fatigue)
-    
+
     p.plot_emg_power_means_detials(time=time, emg_data=emg_filtered,
-                                 power_mean_time=power_time, 
-                                 start_power_means=start_power_means,
-                                 mid_power_means=mid_power_means,
-                                 end_power_means=end_power_means,
-                                 regression_line=show_fatigue)
-    
+                                   power_mean_time=power_time,
+                                   start_power_means=start_power_means,
+                                   mid_power_means=mid_power_means,
+                                   end_power_means=end_power_means,
+                                   regression_line=show_fatigue)
