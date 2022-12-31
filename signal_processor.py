@@ -461,7 +461,7 @@ def add_onsets_class(onsets, activity_starts, activity_ends):
     # for each onset, add the onset order as a class or label
     for i in range(len(activity_starts)):
         for j in range(activity_starts[i], activity_ends[i], 1):
-            onsets[j] = i
+            onsets[j] = (i + 1)
 
     return onsets
 
